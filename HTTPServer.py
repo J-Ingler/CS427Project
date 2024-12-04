@@ -5,8 +5,9 @@ PORT = 8000
 
 class MyHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path == "/":
-            self.path = "/index.html"  # Serve index.html by default
+        # if self.path == "C:/Users/jonah/PycharmProjects/CS427Project/index.html":
+        #     self.path = "C:/Users/jonah/PycharmProjects/CS427Project/index.html"  # Serve index.html by default
+        self.path = "C:/Users/jonah/PycharmProjects/CS427Project/index.html"
         try:
             with open(self.path) as file:
                 self.send_response(200)
