@@ -5,9 +5,8 @@
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Farm</title>
-
-  <link rel="stylesheet" href="style.css">
+  <title>Sensor Data</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
@@ -15,29 +14,27 @@
     <h1>Web Socket</h1>
     <div class="sensorDiv">
       <div class="valueDiv">
-        <p><span id="temperature">%TEMP%</span> °C</p>
-        <p>Temperature</p>
+        <p><span id="temperature1">%TEMP%</span> °C</p>
+        <p>Temperature 1</p>
       </div>
       <div class="valueDiv">
-        <p><span id="humidity">%HUMI%</span> %</p>
-        <p>Humidity</p>
+        <p><span id="humidity1">%HUMI%</span> %</p>
+        <p>Humidity 1</p>
       </div>
       <div class="valueDiv">
-        <p><span id="soil">%SOIL%</span> %</p>
-        <p>Moiseture</p>
+        <p><span id="temperature2">%TEMP%</span> °C</p>
+        <p>Temperature 2</p>
+      </div>
+      <div class="valueDiv">
+        <p><span id="humidity2">%HUMI%</span> %</p>
+        <p>Humidity 2</p>
       </div>
     </div>
     <div class="buttonGroupDiv">
       <a onclick="relay(1)"><button class="buttonRelay" id="relay1"> Relay 1</button></a>
       <a onclick="relay(2)"><button class="buttonRelay" id="relay2"> Relay 2</button></a>
-      <a onclick="relay(3)"><button class="buttonRelay" id="relay3"> Relay 3</button></a>
-      <a onclick="relay(4)"><button class="buttonRelay" id="relay4"> Relay 4</button></a>
-      <a onclick="relay(5)"><button class="buttonRelay" id="relay5"> Relay 5</button></a>
-      <a onclick="relay(6)"><button class="buttonRelay" id="relay6"> Relay 6</button></a>
-
     </div>
     <p id="state" class="state">state: wait for connection...</p>
-  </div>
   </div>
   <script>
     var webSocket = null;
@@ -95,7 +92,7 @@
     function relay(number) {
       let color = document.getElementById("relay" + number);
       let myDivObjBgColor = window.getComputedStyle(color).backgroundColor
-      if (myDivObjBgColor == "rgb(250, 17, 17)") { // red 
+      if (myDivObjBgColor == "rgb(250, 17, 17)") { // red
         console.log("OFF");
         webSocket.send("Relay_" + number + "_OFF");
       } else if (myDivObjBgColor == "rgb(48, 230, 60)") { // green
