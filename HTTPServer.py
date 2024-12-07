@@ -88,13 +88,6 @@ def on_message(client, userdata, msg):
     except Exception as e:
         print("Error processing MQTT message:", e)
 
-async def broadcast_data():
-    print(f"Connected clients: {len(connected_clients)}")  # Debug output
-    if connected_clients:  # Only send data if clients are connected
-        message = json.dumps(sensor_data)
-        print("Broadcasting data to clients:", message)  # Debug output
-        await asyncio.gather(*(client.send(message) for client in connected_clients if client.open))
-
 # MQTT Client in a separate thread
 def run_mqtt_client():
     client = mqtt.Client(client_id=MQTT_CLIENT_ID, protocol=mqtt.MQTTv311)
@@ -132,6 +125,14 @@ async def broadcast_data():
             except websockets.exceptions.ConnectionClosed:
                 print("Client disconnected during broadcast.")
                 connected_clients.remove(client)
+
+async def manual_broadcast_test():
+    while True:
+        if connected_clients:
+            test_message = {"test": "Hello, WebSocket client!"}
+            print("Sending test message to clients:", test_message)  # Debug log
+            await asyncio.gather(*(client.send(json.dumps(test_message)) for client in connected_clients if client.open))
+        await asyncio.sleep(5)  # Broadcast every 5 seconds
 
 
 async def start_websocket_server():
