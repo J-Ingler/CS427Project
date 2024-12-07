@@ -32,16 +32,20 @@ connected_clients = []
 # Save data to database
 def save_to_database(sensor_data):
     try:
+        if None in sensor_data.values():
+            print("Skipping database save due to incomplete sensor data:", sensor_data)
+            return
+
         conn = mysql.connector.connect(**DB_CONFIG)
         cursor = conn.cursor()
         query = """INSERT INTO sensor_data (temperature1, humidity1, temperature2, humidity2, timestamp) \
                    VALUES (%s, %s, %s, %s, %s)"""
         timestamp = datetime.now()
         cursor.execute(query, (
-            sensor_data.get("temperature1"),
-            sensor_data.get("humidity1"),
-            sensor_data.get("temperature2"),
-            sensor_data.get("humidity2"),
+            sensor_data["temperature1"],
+            sensor_data["humidity1"],
+            sensor_data["temperature2"],
+            sensor_data["humidity2"],
             timestamp
         ))
         conn.commit()
@@ -78,12 +82,16 @@ def on_message(client, userdata, msg):
 
         print("Sensor data updated:", sensor_data)  # Debug output
 
+        # Ensure valid sensor data before processing further
+        if any(value is None for value in sensor_data.values()):
+            print("Incomplete sensor data received. Skipping further processing.")
+            return
+
         # Save to database
         save_to_database(sensor_data)
 
         # Enqueue data for WebSocket broadcast
-        loop = asyncio.get_event_loop()
-        asyncio.run_coroutine_threadsafe(sensor_data_queue.put(sensor_data), loop)
+        asyncio.run_coroutine_threadsafe(sensor_data_queue.put(sensor_data), asyncio.get_event_loop())
 
     except Exception as e:
         print("Error processing MQTT message:", e)
@@ -104,11 +112,7 @@ async def websocket_handler(websocket, path="/"):
 async def broadcast_data():
     while True:
         sensor_data = await sensor_data_queue.get()
-        # Sanitize the data to ensure no null values are passed
-        sanitized_data = {
-            key: (value if value is not None else "N/A") for key, value in sensor_data.items()
-        }
-        message = json.dumps(sanitized_data)
+        message = json.dumps(sensor_data)
         print("Broadcasting data to clients:", message)  # Debug output
         for client in connected_clients[:]:  # Use a copy of the list to avoid iteration issues
             try:
