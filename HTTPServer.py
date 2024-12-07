@@ -126,15 +126,6 @@ async def broadcast_data():
                 print("Client disconnected during broadcast.")
                 connected_clients.remove(client)
 
-async def manual_broadcast_test():
-    while True:
-        if connected_clients:
-            test_message = {"test": "Hello, WebSocket client!"}
-            print("Sending test message to clients:", test_message)  # Debug log
-            await asyncio.gather(*(client.send(json.dumps(test_message)) for client in connected_clients if client.open))
-        await asyncio.sleep(5)  # Broadcast every 5 seconds
-
-
 async def start_websocket_server():
     print("Starting WebSocket server on port 8001...")
     async with websockets.serve(websocket_handler, "0.0.0.0", 8001):  # Bind to all interfaces
@@ -178,7 +169,6 @@ def start_servers():
     # Run WebSocket server and manual broadcast test in the asyncio event loop
     loop = asyncio.get_event_loop()
     loop.create_task(start_websocket_server())
-    loop.create_task(manual_broadcast_test())
     loop.run_forever()
 
 if __name__ == "__main__":
