@@ -5,6 +5,8 @@ import socketserver
 import threading
 import paho.mqtt.client as mqtt
 import json
+import mysql.connector
+from datetime import datetime
 
 # MQTT configuration
 MQTT_BROKER = "127.0.0.1"
@@ -13,11 +15,41 @@ MQTT_TOPIC_SENSOR1 = "sensor1/data"
 MQTT_TOPIC_SENSOR2 = "sensor2/data"
 MQTT_CLIENT_ID = "web_socket"
 
+# Database configuration
+DB_CONFIG = {
+    'host': 'localhost',
+    'user': 'remote',
+    'password': 'admin',
+    'database': 'iot'
+}
+
 # Global variable for sensor data
 sensor_data = {"temperature1": None, "humidity1": None, "temperature2": None, "humidity2": None}
 
 # List to store connected WebSocket clients
 connected_clients = []
+
+# Save data to database
+def save_to_database():
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        query = """INSERT INTO sensor_data (temperature1, humidity1, temperature2, humidity2, timestamp) \
+                   VALUES (%s, %s, %s, %s, %s)"""
+        timestamp = datetime.now()
+        cursor.execute(query, (
+            sensor_data["temperature1"],
+            sensor_data["humidity1"],
+            sensor_data["temperature2"],
+            sensor_data["humidity2"],
+            timestamp
+        ))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("Sensor data saved to database.")
+    except Exception as e:
+        print("Error saving to database:", e)
 
 # MQTT Callbacks
 def on_connect(client, userdata, flags, rc):
@@ -34,22 +66,24 @@ def on_message(client, userdata, msg):
         message = msg.payload.decode("utf-8")
         if msg.topic == MQTT_TOPIC_SENSOR1:
             data = message.split(",")
-            # Assuming format: "temp,hum"
             if len(data) == 2:
-                sensor_data["temperature1"] = data[0]
-                sensor_data["humidity1"] = data[1]
+                sensor_data["temperature1"] = float(data[0])
+                sensor_data["humidity1"] = float(data[1])
         elif msg.topic == MQTT_TOPIC_SENSOR2:
             data = message.split(",")
-            # Assuming format: "temp,hum"
             if len(data) == 2:
-                sensor_data["temperature2"] = data[0]
-                sensor_data["humidity2"] = data[1]
+                sensor_data["temperature2"] = float(data[0])
+                sensor_data["humidity2"] = float(data[1])
 
         print("Sensor data updated:", sensor_data)
 
+        # Save to database after update
+        save_to_database()
+
         # Broadcast updated data to all WebSocket clients
         loop = asyncio.get_running_loop()
-        loop.create_task(broadcast_data())
+        loop.call_soon_threadsafe(asyncio.create_task, broadcast_data())
+
     except Exception as e:
         print("Error processing MQTT message:", e)
 
