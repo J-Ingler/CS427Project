@@ -7,6 +7,8 @@ import paho.mqtt.client as mqtt
 import json
 import mysql.connector
 from datetime import datetime
+from asyncio import run_coroutine_threadsafe
+
 
 # MQTT configuration
 MQTT_BROKER = "127.0.0.1"
@@ -81,9 +83,9 @@ def on_message(client, userdata, msg):
         save_to_database()
 
         # Broadcast updated data to all WebSocket clients
-        loop = asyncio.get_running_loop()
-        print("Preparing to broadcast data to clients")  # Debug output
-        loop.call_soon_threadsafe(asyncio.create_task, broadcast_data())
+        if asyncio.get_event_loop().is_running():
+            loop = asyncio.get_event_loop()
+            run_coroutine_threadsafe(broadcast_data(), loop)
 
     except Exception as e:
         print("Error processing MQTT message:", e)
@@ -137,8 +139,31 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
         else:
             super().do_GET()
 
-# MQTT Client in a separate thread
-def run_mqtt_client():
+
+# Start HTTP Server
+def start_http_server():
+    with socketserver.TCPServer(("0.0.0.0", 8000), MyRequestHandler) as httpd:  # Bind to all interfaces
+        print("Serving HTTP on port 8000")
+        httpd.serve_forever()
+
+def start_servers():
+    # Start HTTP server in a separate thread
+    http_thread = threading.Thread(target=start_http_server)
+    http_thread.daemon = True
+    http_thread.start()
+
+    # Start MQTT client in a separate thread
+    loop = asyncio.get_event_loop()
+    mqtt_thread = threading.Thread(target=run_mqtt_client, args=(loop,))
+    mqtt_thread.daemon = True
+    mqtt_thread.start()
+
+    # Run WebSocket server in the asyncio event loop
+    asyncio.run(start_websocket_server())
+
+# Update the run_mqtt_client function
+def run_mqtt_client(loop):
+    asyncio.set_event_loop(loop)
     client = mqtt.Client(client_id=MQTT_CLIENT_ID, protocol=mqtt.MQTTv311)
     client.on_connect = on_connect
     client.on_message = on_message
@@ -150,26 +175,6 @@ def run_mqtt_client():
         print("MQTT client error:", e)
         client.disconnect()
 
-# Start HTTP Server
-def start_http_server():
-    with socketserver.TCPServer(("0.0.0.0", 8000), MyRequestHandler) as httpd:  # Bind to all interfaces
-        print("Serving HTTP on port 8000")
-        httpd.serve_forever()
-
-# Start Servers
-def start_servers():
-    # Start HTTP server in a separate thread
-    http_thread = threading.Thread(target=start_http_server)
-    http_thread.daemon = True
-    http_thread.start()
-
-    # Start MQTT client in a separate thread
-    mqtt_thread = threading.Thread(target=run_mqtt_client)
-    mqtt_thread.daemon = True
-    mqtt_thread.start()
-
-    # Run WebSocket server in the asyncio event loop
-    asyncio.run(start_websocket_server())
 
 if __name__ == "__main__":
     start_servers()
