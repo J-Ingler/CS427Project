@@ -137,6 +137,19 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
         else:
             super().do_GET()
 
+# MQTT Client in a separate thread
+def run_mqtt_client():
+    client = mqtt.Client(client_id=MQTT_CLIENT_ID, protocol=mqtt.MQTTv311)
+    client.on_connect = on_connect
+    client.on_message = on_message
+
+    try:
+        client.connect(MQTT_BROKER, MQTT_PORT, 60)
+        client.loop_forever()
+    except Exception as e:
+        print("MQTT client error:", e)
+        client.disconnect()
+
 # Start HTTP Server
 def start_http_server():
     with socketserver.TCPServer(("0.0.0.0", 8000), MyRequestHandler) as httpd:  # Bind to all interfaces
