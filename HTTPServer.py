@@ -15,9 +15,6 @@ MQTT_TOPIC_SENSOR1 = "sensor1/data"
 MQTT_TOPIC_SENSOR2 = "sensor2/data"
 MQTT_CLIENT_ID = "web_socket"
 
-# Path to static files
-STATIC_FILES_DIR = os.path.join(os.path.dirname(__file__), "www")
-
 # Global variable for sensor data
 sensor_data = {"temperature1": None, "humidity1": None, "temperature2": None, "humidity2": None}
 
@@ -93,39 +90,39 @@ async def start_websocket_server():
 
 # HTTP Server
 class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
-    def translate_path(self, path):
-        """Translate the requested path to the static files directory."""
-        # Serve files from the STATIC_FILES_DIR directory
-        path = super().translate_path(path)
-        relpath = os.path.relpath(path, os.getcwd())
-        return os.path.join(STATIC_FILES_DIR, relpath)
-
     def do_GET(self):
         if self.path == "/data":
+            # Serve sensor data as JSON
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(bytes(json.dumps(sensor_data), "utf-8"))
         else:
+            # Serve HTML and CSS files from the current directory
+            if self.path == "/":
+                self.path = "/sensors.html"
             super().do_GET()
 
 # Start HTTP Server
 def start_http_server():
-    os.chdir(STATIC_FILES_DIR)  # Set working directory for static files
+    # Serve files from the current directory
     with socketserver.TCPServer(("", 8000), MyRequestHandler) as httpd:
         print("Serving HTTP on port 8000")
         httpd.serve_forever()
 
 # Start Servers
 def start_servers():
+    # Start HTTP server in a separate thread
     http_thread = threading.Thread(target=start_http_server)
     http_thread.daemon = True
     http_thread.start()
 
+    # Start MQTT client in a separate thread
     mqtt_thread = threading.Thread(target=run_mqtt_client)
     mqtt_thread.daemon = True
     mqtt_thread.start()
 
+    # Run WebSocket server in the asyncio event loop
     asyncio.run(start_websocket_server())
 
 if __name__ == "__main__":
