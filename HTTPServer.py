@@ -61,6 +61,10 @@ def fetch_latest_data():
         latest_data = cursor.fetchone()
         cursor.close()
         conn.close()
+        if latest_data:
+            # Convert datetime object to string
+            if isinstance(latest_data['timestamp'], datetime):
+                latest_data['timestamp'] = latest_data['timestamp'].strftime("%Y-%m-%d %H:%M:%S")
         return latest_data
     except Exception as e:
         print("Error fetching latest data:", e)
