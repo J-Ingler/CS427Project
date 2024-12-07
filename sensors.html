@@ -49,17 +49,13 @@
       };
 
       webSocket.onmessage = (event) => {
-          try {
-              console.log("WebSocket message received:", event.data); // Debugging output
-              const data = JSON.parse(event.data);
-              document.getElementById("temperature1").textContent = data.temperature1 || "N/A";
-              document.getElementById("humidity1").textContent = data.humidity1 || "N/A";
-              document.getElementById("temperature2").textContent = data.temperature2 || "N/A";
-              document.getElementById("humidity2").textContent = data.humidity2 || "N/A";
-          } catch (e) {
-              console.error("Error parsing WebSocket message:", e);
-          }
+          const data = JSON.parse(event.data);
+          document.getElementById("temperature1").textContent = data.temperature1 || "N/A";
+          document.getElementById("humidity1").textContent = data.humidity1 || "N/A";
+          document.getElementById("temperature2").textContent = data.temperature2 || "N/A";
+          document.getElementById("humidity2").textContent = data.humidity2 || "N/A";
       };
+
 
 
       webSocket.onclose = () => {
