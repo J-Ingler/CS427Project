@@ -66,6 +66,50 @@ def fetch_latest_data():
         print("Error fetching latest data:", e)
         return None
 
+# MQTT Callbacks
+def on_connect(client, userdata, flags, rc):
+    if rc == 0:
+        print("Connected to MQTT Broker!")
+        client.subscribe(MQTT_TOPIC_SENSOR1)
+        client.subscribe(MQTT_TOPIC_SENSOR2)
+    else:
+        print(f"Failed to connect, return code {rc}")
+
+def on_message(client, userdata, msg):
+    try:
+        message = msg.payload.decode("utf-8")
+        sensor_data = {}
+
+        if msg.topic == MQTT_TOPIC_SENSOR1:
+            data = message.split(",")
+            if len(data) == 2:
+                try:
+                    sensor_data["temperature1"] = float(data[0])
+                    sensor_data["humidity1"] = float(data[1])
+                except ValueError:
+                    print("Invalid sensor data received for SENSOR1:", data)
+                    return
+        elif msg.topic == MQTT_TOPIC_SENSOR2:
+            data = message.split(",")
+            if len(data) == 2:
+                try:
+                    sensor_data["temperature2"] = float(data[0])
+                    sensor_data["humidity2"] = float(data[1])
+                except ValueError:
+                    print("Invalid sensor data received for SENSOR2:", data)
+                    return
+
+        print("Sensor data updated:", sensor_data)
+
+        # Save to database
+        save_to_database(sensor_data)
+
+        # Enqueue data for WebSocket broadcast
+        asyncio.run_coroutine_threadsafe(sensor_data_queue.put(sensor_data), asyncio.get_event_loop())
+
+    except Exception as e:
+        print("Error processing MQTT message:", e)
+
 # WebSocket Server
 async def websocket_handler(websocket, path="/"):
     connected_clients.append(websocket)
