@@ -37,6 +37,25 @@
     <p id="state" class="state">state: wait for connection...</p>
   </div>
   <script>
+    // Placeholder data for testing
+    window.addEventListener("load", () => {
+      const data = {
+        temperature1: 22.5,
+        humidity1: 45,
+        temperature2: 24.0,
+        humidity2: 50
+      };
+
+      // Simulate WebSocket data update
+      document.getElementById("temperature1").textContent = data.temperature1 || "N/A";
+      document.getElementById("humidity1").textContent = data.humidity1 || "N/A";
+      document.getElementById("temperature2").textContent = data.temperature2 || "N/A";
+      document.getElementById("humidity2").textContent = data.humidity2 || "N/A";
+
+      console.log("Test data has been loaded.");
+    });
+
+    /*
     let webSocket = null;
 
     function initWebSocket() {
@@ -48,38 +67,13 @@
         document.getElementById("state").textContent = "state: Connected";
       };
 
-      window.addEventListener("load", () => {
-          const data = {
-              temperature1: 22.5,
-              humidity1: 45,
-              temperature2: 24.0,
-              humidity2: 50
-          };
-
-          // Simulate WebSocket data update
+      webSocket.onmessage = (event) => {
+          const data = JSON.parse(event.data);
           document.getElementById("temperature1").textContent = data.temperature1 || "N/A";
           document.getElementById("humidity1").textContent = data.humidity1 || "N/A";
           document.getElementById("temperature2").textContent = data.temperature2 || "N/A";
           document.getElementById("humidity2").textContent = data.humidity2 || "N/A";
-
-          console.log("Test data has been loaded.");
-      });
-
-      // webSocket.onmessage = (event) => {
-      //     const data = {
-      //       temperature1: 22.5,
-      //       humidity1: 45,
-      //       temperature2: 24.0,
-      //       humidity2: 50
-      //     };
-      //     //const data = JSON.parse(event.data);
-      //     document.getElementById("temperature1").textContent = data.temperature1 || "N/A";
-      //     document.getElementById("humidity1").textContent = data.humidity1 || "N/A";
-      //     document.getElementById("temperature2").textContent = data.temperature2 || "N/A";
-      //     document.getElementById("humidity2").textContent = data.humidity2 || "N/A";
-      // };
-
-
+      };
 
       webSocket.onclose = () => {
         console.log("Disconnected from WebSocket server");
@@ -107,6 +101,7 @@
     }
 
     window.addEventListener("load", initWebSocket);
+    */
   </script>
 </body>
 
