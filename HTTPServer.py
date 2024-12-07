@@ -68,22 +68,29 @@ def on_message(client, userdata, msg):
         if msg.topic == MQTT_TOPIC_SENSOR1:
             data = message.split(",")
             if len(data) == 2:
-                sensor_data["temperature1"] = float(data[0])
-                sensor_data["humidity1"] = float(data[1])
+                try:
+                    sensor_data["temperature1"] = float(data[0])
+                    sensor_data["humidity1"] = float(data[1])
+                except ValueError:
+                    print("Invalid sensor data received for SENSOR1:", data)
+                    return
         elif msg.topic == MQTT_TOPIC_SENSOR2:
             data = message.split(",")
             if len(data) == 2:
-                sensor_data["temperature2"] = float(data[0])
-                sensor_data["humidity2"] = float(data[1])
+                try:
+                    sensor_data["temperature2"] = float(data[0])
+                    sensor_data["humidity2"] = float(data[1])
+                except ValueError:
+                    print("Invalid sensor data received for SENSOR2:", data)
+                    return
 
-        print("Sensor data updated:", sensor_data)  # Debug output
+        print("Sensor data updated:", sensor_data)
 
         # Save to database
         save_to_database(sensor_data)
 
         # Enqueue data for WebSocket broadcast
-        loop = asyncio.get_event_loop()
-        loop.call_soon_threadsafe(sensor_data_queue.put_nowait, sensor_data)
+        asyncio.run_coroutine_threadsafe(sensor_data_queue.put(sensor_data), asyncio.get_event_loop())
 
     except Exception as e:
         print("Error processing MQTT message:", e)
@@ -91,10 +98,10 @@ def on_message(client, userdata, msg):
 # WebSocket Server
 async def websocket_handler(websocket, path="/"):
     connected_clients.append(websocket)
-    print(f"New WebSocket client connected. Total clients: {len(connected_clients)}")  # Debug log
+    print(f"New WebSocket client connected. Total clients: {len(connected_clients)}")
     try:
         async for message in websocket:
-            print(f"Message received from client: {message}")  # Debug log
+            print(f"Message received from client: {message}")
     except websockets.exceptions.ConnectionClosedError as e:
         print(f"WebSocket error: {e}")
     finally:
@@ -105,8 +112,8 @@ async def broadcast_data():
     while True:
         sensor_data = await sensor_data_queue.get()
         message = json.dumps(sensor_data)
-        print("Broadcasting data to clients:", message)  # Debug output
-        for client in connected_clients[:]:  # Use a copy of the list to avoid iteration issues
+        print("Broadcasting data to clients:", message)
+        for client in connected_clients[:]:
             try:
                 await client.send(message)
             except websockets.exceptions.ConnectionClosed:
@@ -116,7 +123,7 @@ async def broadcast_data():
 async def start_websocket_server():
     print("Starting WebSocket server on port 8001...")
     try:
-        async with websockets.serve(websocket_handler, "0.0.0.0", 8001):  # Bind to all interfaces
+        async with websockets.serve(websocket_handler, "0.0.0.0", 8001):
             await broadcast_data()
     except asyncio.CancelledError:
         print("WebSocket server shutting down.")
@@ -125,13 +132,11 @@ async def start_websocket_server():
 class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/data":
-            # Serve sensor data as JSON
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(bytes(json.dumps({"message": "Data endpoint not implemented here"}), "utf-8"))
         elif self.path == "/" or self.path == "/index.html":
-            # Default to serving sensors.html
             self.path = "/sensors.html"
             super().do_GET()
         else:
@@ -139,7 +144,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
 
 # Start HTTP Server
 def start_http_server():
-    with socketserver.TCPServer(("0.0.0.0", 8000), MyRequestHandler) as httpd:  # Bind to all interfaces
+    with socketserver.TCPServer(("0.0.0.0", 8000), MyRequestHandler) as httpd:
         print("Serving HTTP on port 8000")
         httpd.serve_forever()
 
