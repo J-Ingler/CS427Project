@@ -48,8 +48,8 @@ def save_to_database():
         cursor.close()
         conn.close()
         print("Sensor data saved to database.")
-    except Exception as e:
-        print("Error saving to database:", e)
+    except Exception:
+        print("Error saving to database")
 
 # MQTT Callbacks
 def on_connect(client, userdata, flags, rc):
@@ -84,8 +84,8 @@ def on_message(client, userdata, msg):
         loop = asyncio.get_running_loop()
         loop.call_soon_threadsafe(asyncio.create_task, broadcast_data())
 
-    except Exception as e:
-        print("Error processing MQTT message:", e)
+    except Exception:
+        print("")
 
 async def broadcast_data():
     if connected_clients:  # Only send data if clients are connected
