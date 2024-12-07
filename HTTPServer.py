@@ -90,7 +90,11 @@ def on_message(client, userdata, msg):
         save_to_database(sensor_data)
 
         # Enqueue data for WebSocket broadcast
-        asyncio.run_coroutine_threadsafe(sensor_data_queue.put(sensor_data), asyncio.get_event_loop())
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.run_coroutine_threadsafe(sensor_data_queue.put(sensor_data), loop)
+        else:
+            print("No running event loop found for MQTT message processing.")
 
     except Exception as e:
         print("Error processing MQTT message:", e)

@@ -48,19 +48,36 @@
         document.getElementById("state").textContent = "state: Connected";
       };
 
-      webSocket.onmessage = (event) => {
+      window.addEventListener("load", () => {
           const data = {
-            temperature1: 22.5,
-            humidity1: 45,
-            temperature2: 24.0,
-            humidity2: 50
+              temperature1: 22.5,
+              humidity1: 45,
+              temperature2: 24.0,
+              humidity2: 50
           };
-          //const data = JSON.parse(event.data);
+
+          // Simulate WebSocket data update
           document.getElementById("temperature1").textContent = data.temperature1 || "N/A";
           document.getElementById("humidity1").textContent = data.humidity1 || "N/A";
           document.getElementById("temperature2").textContent = data.temperature2 || "N/A";
           document.getElementById("humidity2").textContent = data.humidity2 || "N/A";
-      };
+
+          console.log("Test data has been loaded.");
+      });
+
+      // webSocket.onmessage = (event) => {
+      //     const data = {
+      //       temperature1: 22.5,
+      //       humidity1: 45,
+      //       temperature2: 24.0,
+      //       humidity2: 50
+      //     };
+      //     //const data = JSON.parse(event.data);
+      //     document.getElementById("temperature1").textContent = data.temperature1 || "N/A";
+      //     document.getElementById("humidity1").textContent = data.humidity1 || "N/A";
+      //     document.getElementById("temperature2").textContent = data.temperature2 || "N/A";
+      //     document.getElementById("humidity2").textContent = data.humidity2 || "N/A";
+      // };
 
 
 
