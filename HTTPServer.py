@@ -9,7 +9,8 @@ import json
 # MQTT configuration
 MQTT_BROKER = "127.0.0.1"
 MQTT_PORT = 1883
-MQTT_TOPIC = "sensor/data"
+MQTT_TOPIC_SENSOR1 = "sensor1/data"
+MQTT_TOPIC_SENSOR2 = "sensor2/data"
 MQTT_CLIENT_ID = "web_socket"
 
 # Global variable for sensor data
@@ -22,7 +23,8 @@ connected_clients = []
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         print("Connected to MQTT Broker!")
-        client.subscribe(MQTT_TOPIC)
+        client.subscribe(MQTT_TOPIC_SENSOR1)
+        client.subscribe(MQTT_TOPIC_SENSOR2)
     else:
         print(f"Failed to connect, return code {rc}")
 
@@ -30,18 +32,24 @@ def on_message(client, userdata, msg):
     global sensor_data
     try:
         message = msg.payload.decode("utf-8")
-        data = message.split(",")
-        # Assuming format: "temp1,hum1,temp2,hum2"
-        if len(data) == 4:
-            sensor_data["temperature1"] = data[0]
-            sensor_data["humidity1"] = data[1]
-            sensor_data["temperature2"] = data[2]
-            sensor_data["humidity2"] = data[3]
-            print("Sensor data updated:", sensor_data)
+        if msg.topic == MQTT_TOPIC_SENSOR1:
+            data = message.split(",")
+            # Assuming format: "temp,hum"
+            if len(data) == 2:
+                sensor_data["temperature1"] = data[0]
+                sensor_data["humidity1"] = data[1]
+        elif msg.topic == MQTT_TOPIC_SENSOR2:
+            data = message.split(",")
+            # Assuming format: "temp,hum"
+            if len(data) == 2:
+                sensor_data["temperature2"] = data[0]
+                sensor_data["humidity2"] = data[1]
 
-            # Broadcast updated data to all WebSocket clients
-            loop = asyncio.get_running_loop()
-            loop.create_task(broadcast_data())
+        print("Sensor data updated:", sensor_data)
+
+        # Broadcast updated data to all WebSocket clients
+        loop = asyncio.get_running_loop()
+        loop.create_task(broadcast_data())
     except Exception as e:
         print("Error processing MQTT message:", e)
 
