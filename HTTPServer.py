@@ -88,18 +88,17 @@ def on_message(client, userdata, msg):
     except Exception as e:
         print("Error processing MQTT message:", e)
 
-# MQTT Client in a separate thread
-def run_mqtt_client():
-    client = mqtt.Client(client_id=MQTT_CLIENT_ID, protocol=mqtt.MQTTv311)
-    client.on_connect = on_connect
-    client.on_message = on_message
-
-    try:
-        client.connect(MQTT_BROKER, MQTT_PORT, 60)
-        client.loop_forever()
-    except Exception as e:
-        print("MQTT client error:", e)
-        client.disconnect()
+async def broadcast_data():
+    print(f"Connected clients: {len(connected_clients)}")  # Debug output
+    if connected_clients:  # Only send data if clients are connected
+        message = json.dumps(sensor_data)
+        print("Broadcasting data to clients:", message)  # Debug output
+        for client in connected_clients[:]:  # Use a copy of the list to avoid iteration issues
+            try:
+                await client.send(message)
+            except websockets.exceptions.ConnectionClosed:
+                print("Client disconnected during broadcast.")
+                connected_clients.remove(client)
 
 # WebSocket Server
 async def websocket_handler(websocket, path="/"):
@@ -108,28 +107,19 @@ async def websocket_handler(websocket, path="/"):
     try:
         async for message in websocket:
             print(f"Message received from client: {message}")  # Debug log
-    except websockets.exceptions.ConnectionClosed:
-        print("WebSocket client disconnected")
+    except websockets.exceptions.ConnectionClosedError as e:
+        print(f"WebSocket error: {e}")
     finally:
         connected_clients.remove(websocket)
-        print(f"Client disconnected. Total clients: {len(connected_clients)}")  # Debug log
-
-async def broadcast_data():
-    print(f"Connected clients: {len(connected_clients)}")  # Debug output
-    if connected_clients:  # Only send data if clients are connected
-        message = json.dumps(sensor_data)
-        print("Broadcasting data to clients:", message)  # Debug output
-        for client in connected_clients:
-            try:
-                await client.send(message)
-            except websockets.exceptions.ConnectionClosed:
-                print("Client disconnected during broadcast.")
-                connected_clients.remove(client)
+        print(f"Client disconnected. Total clients: {len(connected_clients)}")
 
 async def start_websocket_server():
     print("Starting WebSocket server on port 8001...")
-    async with websockets.serve(websocket_handler, "0.0.0.0", 8001):  # Bind to all interfaces
-        await asyncio.Future()  # Keep the server running indefinitely
+    try:
+        async with websockets.serve(websocket_handler, "0.0.0.0", 8001):  # Bind to all interfaces
+            await asyncio.Future()  # Run indefinitely
+    except asyncio.CancelledError:
+        print("WebSocket server shutting down.")
 
 # HTTP Server
 class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
@@ -166,10 +156,7 @@ def start_servers():
     mqtt_thread.start()
 
     # Run WebSocket server in the asyncio event loop
-    # Run WebSocket server and manual broadcast test in the asyncio event loop
-    loop = asyncio.get_event_loop()
-    loop.create_task(start_websocket_server())
-    loop.run_forever()
+    asyncio.run(start_websocket_server())
 
 if __name__ == "__main__":
     start_servers()
