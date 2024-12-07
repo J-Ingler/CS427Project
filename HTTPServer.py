@@ -51,61 +51,34 @@ def save_to_database(sensor_data):
     except Exception as e:
         print("Error saving to database:", e)
 
-# MQTT Callbacks
-def on_connect(client, userdata, flags, rc):
-    if rc == 0:
-        print("Connected to MQTT Broker!")
-        client.subscribe(MQTT_TOPIC_SENSOR1)
-        client.subscribe(MQTT_TOPIC_SENSOR2)
-    else:
-        print(f"Failed to connect, return code {rc}")
-
-def on_message(client, userdata, msg):
+# Fetch the most recent data from the database
+def fetch_latest_data():
     try:
-        message = msg.payload.decode("utf-8")
-        sensor_data = {}
-
-        if msg.topic == MQTT_TOPIC_SENSOR1:
-            data = message.split(",")
-            if len(data) == 2:
-                try:
-                    sensor_data["temperature1"] = float(data[0])
-                    sensor_data["humidity1"] = float(data[1])
-                except ValueError:
-                    print("Invalid sensor data received for SENSOR1:", data)
-                    return
-        elif msg.topic == MQTT_TOPIC_SENSOR2:
-            data = message.split(",")
-            if len(data) == 2:
-                try:
-                    sensor_data["temperature2"] = float(data[0])
-                    sensor_data["humidity2"] = float(data[1])
-                except ValueError:
-                    print("Invalid sensor data received for SENSOR2:", data)
-                    return
-
-        print("Sensor data updated:", sensor_data)
-
-        # Save to database
-        save_to_database(sensor_data)
-
-        # Enqueue data for WebSocket broadcast
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            asyncio.run_coroutine_threadsafe(sensor_data_queue.put(sensor_data), loop)
-        else:
-            print("No running event loop found for MQTT message processing.")
-
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        query = "SELECT * FROM sensor_data ORDER BY timestamp DESC LIMIT 1"
+        cursor.execute(query)
+        latest_data = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return latest_data
     except Exception as e:
-        print("Error processing MQTT message:", e)
+        print("Error fetching latest data:", e)
+        return None
 
 # WebSocket Server
 async def websocket_handler(websocket, path="/"):
     connected_clients.append(websocket)
     print(f"New WebSocket client connected. Total clients: {len(connected_clients)}")
     try:
-        async for message in websocket:
-            print(f"Message received from client: {message}")
+        while True:
+            # Fetch the most recent data
+            latest_data = fetch_latest_data()
+            if latest_data:
+                await websocket.send(json.dumps(latest_data))
+            else:
+                await websocket.send(json.dumps({"error": "Could not fetch data"}))
+            await asyncio.sleep(5)  # Send updates every 5 seconds
     except websockets.exceptions.ConnectionClosedError as e:
         print(f"WebSocket error: {e}")
     finally:
@@ -128,7 +101,7 @@ async def start_websocket_server():
     print("Starting WebSocket server on port 8001...")
     try:
         async with websockets.serve(websocket_handler, "0.0.0.0", 8001):
-            await broadcast_data()
+            await asyncio.Future()  # Keep the server running indefinitely
     except asyncio.CancelledError:
         print("WebSocket server shutting down.")
 
