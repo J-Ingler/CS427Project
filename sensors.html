@@ -40,7 +40,7 @@
     let webSocket = null;
 
     function initWebSocket() {
-      const wsUri = `ws://${window.location.hostname}:8001`; // WebSocket server URL
+      const wsUri = "ws://10.42.0.1:8001";
       webSocket = new WebSocket(wsUri);
 
       webSocket.onopen = () => {
