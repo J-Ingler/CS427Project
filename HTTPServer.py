@@ -33,6 +33,7 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     global sensor_data
     try:
+        print(f"Message received on topic {msg.topic}: {msg.payload.decode('utf-8')}")  # Debug output
         message = msg.payload.decode("utf-8")
         if msg.topic == MQTT_TOPIC_SENSOR1:
             data = message.split(",")
@@ -57,6 +58,7 @@ def on_message(client, userdata, msg):
 async def broadcast_data():
     if connected_clients:
         message = json.dumps(sensor_data)
+        print("Broadcasting data to clients:", message)
         await asyncio.gather(*(client.send(message) for client in connected_clients if client.open))
 
 # MQTT Client in a separate thread
@@ -85,7 +87,7 @@ async def websocket_handler(websocket, path="/"):
 
 async def start_websocket_server():
     print("Starting WebSocket server on port 8001...")
-    async with websockets.serve(websocket_handler, "localhost", 8001):
+    async with websockets.serve(websocket_handler, "0.0.0.0", 8001):
         await asyncio.Future()
 
 # HTTP Server

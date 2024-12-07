@@ -51,6 +51,7 @@
       webSocket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          console.log("Received data:", data);  // Debug output
           document.getElementById("temperature1").textContent = data.temperature1 || "N/A";
           document.getElementById("humidity1").textContent = data.humidity1 || "N/A";
           document.getElementById("temperature2").textContent = data.temperature2 || "N/A";
