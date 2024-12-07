@@ -110,17 +110,25 @@ def run_mqtt_client():
 
 # WebSocket Server
 async def websocket_handler(websocket, path="/"):
-    # Register client
     connected_clients.append(websocket)
+    print(f"New WebSocket client connected. Total clients: {len(connected_clients)}")  # Debug log
     try:
-        # Keep connection alive
-        async for _ in websocket:
-            pass
+        async for message in websocket:
+            print(f"Message received from client: {message}")  # Debug log
     except websockets.exceptions.ConnectionClosed:
         print("WebSocket client disconnected")
     finally:
-        # Unregister client on disconnect
         connected_clients.remove(websocket)
+        print(f"Client disconnected. Total clients: {len(connected_clients)}")  # Debug log
+
+async def manual_broadcast_test():
+    while True:
+        if connected_clients:
+            test_message = {"test": "Hello, WebSocket client!"}
+            print("Sending test message to clients:", test_message)  # Debug log
+            await asyncio.gather(*(client.send(json.dumps(test_message)) for client in connected_clients if client.open))
+        await asyncio.sleep(5)  # Broadcast every 5 seconds
+
 
 async def start_websocket_server():
     print("Starting WebSocket server on port 8001...")
@@ -162,7 +170,11 @@ def start_servers():
     mqtt_thread.start()
 
     # Run WebSocket server in the asyncio event loop
-    asyncio.run(start_websocket_server())
+    # Run WebSocket server and manual broadcast test in the asyncio event loop
+    loop = asyncio.get_event_loop()
+    loop.create_task(start_websocket_server())
+    loop.create_task(manual_broadcast_test())
+    loop.run_forever()
 
 if __name__ == "__main__":
     start_servers()
