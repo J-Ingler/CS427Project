@@ -121,18 +121,24 @@ def run_mqtt_client():
 
 
 async def websocket_handler(websocket, path="/"):
-    global connected_clients  # Ensure you're modifying the global variable
-    print("websocket_handler invoked")
+    global connected_clients
     connected_clients.append(websocket)
     print(f"Client connected: {websocket.remote_address}")
+    print(f"Connected clients: {len(connected_clients)}")
     try:
         async for message in websocket:
             print(f"Message from client: {message}")
+            if message == "GET_SENSOR_DATA":
+                # Respond with the current sensor data
+                response = json.dumps(sensor_data)
+                await websocket.send(response)
+                print(f"Sent sensor data to client: {response}")
     except websockets.exceptions.ConnectionClosed:
         print(f"Client disconnected: {websocket.remote_address}")
     finally:
         connected_clients.remove(websocket)
         print(f"Connected clients after removal: {len(connected_clients)}")
+
 
 async def start_websocket_server():
     print("Starting WebSocket server on port 8001...")
