@@ -83,12 +83,16 @@ def on_message(client, userdata, msg):
                 sensor_data["humidity2"] = float(data[1])
         if msg.topic == "Relay_1_ON":
             client.publish(MQTT_TOPIC_RELAY1, "ON")
+            print(MQTT_TOPIC_RELAY1, ": ON")
         if msg.topic == "Relay_2_ON":
             client.publish(MQTT_TOPIC_RELAY2, "ON")
+            print(MQTT_TOPIC_RELAY2, ": ON")
         if msg.topic == "Relay_1_OFF":
             client.publish(MQTT_TOPIC_RELAY1, "OFF")
+            print(MQTT_TOPIC_RELAY1, ": OFF")
         if msg.topic == "Relay_2_OFF":
             client.publish(MQTT_TOPIC_RELAY2, "OFF")
+            print(MQTT_TOPIC_RELAY2, ": OFF")
 
         print("Sensor data updated:", sensor_data)  # Debug output
 
