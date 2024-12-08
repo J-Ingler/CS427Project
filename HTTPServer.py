@@ -82,6 +82,7 @@ def on_message(client, userdata, msg):
         # Save to database after update
         save_to_database()
 
+        broadcast_data()
         # Broadcast updated data to all WebSocket clients
         loop = asyncio.get_event_loop()
         asyncio.run_coroutine_threadsafe(broadcast_data(), loop)
