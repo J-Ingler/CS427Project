@@ -112,6 +112,7 @@ def publish_relay_data(relay_data):
         client.connect(MQTT_BROKER, port=MQTT_PORT)
         client.publish("relay/data", relay_data)
         print(f"Relay data published: {relay_data}")
+        client.disconnect()  # Ensure the client disconnects after publishing
     except Exception as e:
         print("Error publishing relay data:", e)
 
