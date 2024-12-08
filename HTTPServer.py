@@ -84,7 +84,7 @@ def on_message(client, userdata, msg):
 
         # Broadcast updated data to all WebSocket clients
         loop = asyncio.get_event_loop()
-        run_coroutine_threadsafe(broadcast_data(), loop)
+        asyncio.run_coroutine_threadsafe(broadcast_data(), loop)
 
     except Exception as e:
         print("Error processing MQTT message:", e)
@@ -98,7 +98,14 @@ async def broadcast_data():
         await asyncio.gather(*(client.send(message) for client in connected_clients if client.open))
 
 # MQTT Client in a separate thread
+import asyncio
+
+
 def run_mqtt_client():
+    # Create and set an event loop for this thread
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
     client = mqtt.Client(client_id=MQTT_CLIENT_ID, protocol=mqtt.MQTTv311)
     client.on_connect = on_connect
     client.on_message = on_message
@@ -109,6 +116,7 @@ def run_mqtt_client():
     except Exception as e:
         print("MQTT client error:", e)
         client.disconnect()
+
 
 # WebSocket Server
 async def websocket_handler(websocket, path="/"):
