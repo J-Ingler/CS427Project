@@ -92,13 +92,12 @@ def on_message(client, userdata, msg):
 
 async def broadcast_data():
     print(f"Connected clients: {len(connected_clients)}")  # Debug output
-    if connected_clients:  # Only send data if clients are connected
-        message = json.dumps(sensor_data)
-        print("Broadcasting data to clients:", message)  # Debug output
-        await asyncio.gather(*(client.send(message) for client in connected_clients if client.open))
+    #if connected_clients:  # Only send data if clients are connected
+    message = json.dumps(sensor_data)
+    print("Broadcasting data to clients:", message)  # Debug output
+    await asyncio.gather(*(client.send(message) for client in connected_clients if client.open))
 
 # MQTT Client in a separate thread
-import asyncio
 
 
 def run_mqtt_client():
