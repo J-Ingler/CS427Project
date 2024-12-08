@@ -29,6 +29,9 @@ sensor_data_queue = asyncio.Queue()
 # List to store connected WebSocket clients
 connected_clients = []
 
+# Global event loop
+main_loop = None
+
 # Save data to database
 def save_to_database(sensor_data):
     try:
@@ -80,6 +83,7 @@ def on_connect(client, userdata, flags, rc):
         print(f"Failed to connect, return code {rc}")
 
 def on_message(client, userdata, msg):
+    global main_loop
     try:
         message = msg.payload.decode("utf-8")
         sensor_data = {}
@@ -108,8 +112,11 @@ def on_message(client, userdata, msg):
         # Save to database
         save_to_database(sensor_data)
 
-        # Enqueue data for WebSocket broadcast
-        asyncio.run_coroutine_threadsafe(sensor_data_queue.put(sensor_data), asyncio.get_event_loop())
+        # Enqueue data for WebSocket broadcast using the main loop
+        asyncio.run_coroutine_threadsafe(
+            sensor_data_queue.put(sensor_data),
+            main_loop  # Use the global main_loop
+        )
 
     except Exception as e:
         print("Error processing MQTT message:", e)
@@ -146,6 +153,8 @@ async def broadcast_data():
                 connected_clients.remove(client)
 
 async def start_websocket_server():
+    global main_loop
+    main_loop = asyncio.get_event_loop()  # Set the global main_loop
     print("Starting WebSocket server on port 8001...")
     try:
         async with websockets.serve(websocket_handler, "0.0.0.0", 8001):
@@ -175,6 +184,8 @@ def start_http_server():
 
 # Start Servers
 def start_servers():
+    global main_loop
+
     # Start HTTP server in a separate thread
     http_thread = threading.Thread(target=start_http_server)
     http_thread.daemon = True
@@ -186,7 +197,10 @@ def start_servers():
     mqtt_thread.start()
 
     # Run WebSocket server in the asyncio event loop
-    asyncio.run(start_websocket_server())
+    try:
+        asyncio.run(start_websocket_server())  # Start the WebSocket server and set up the event loop
+    except KeyboardInterrupt:
+        print("Servers shutting down.")
 
 def run_mqtt_client():
     client = mqtt.Client(client_id=MQTT_CLIENT_ID, protocol=mqtt.MQTTv311)
