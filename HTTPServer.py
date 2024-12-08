@@ -13,6 +13,8 @@ MQTT_BROKER = "127.0.0.1"
 MQTT_PORT = 1883
 MQTT_TOPIC_SENSOR1 = "sensor1/data"
 MQTT_TOPIC_SENSOR2 = "sensor2/data"
+MQTT_TOPIC_RELAY1 = "relay1/data"
+MQTT_TOPIC_RELAY2 = "relay2/data"
 MQTT_CLIENT_ID = "web_socket"
 
 # Database configuration
@@ -57,6 +59,8 @@ def on_connect(client, userdata, flags, rc):
         print("Connected to MQTT Broker!")
         client.subscribe(MQTT_TOPIC_SENSOR1)
         client.subscribe(MQTT_TOPIC_SENSOR2)
+        client.subscribe(MQTT_TOPIC_RELAY1)
+        client.subscribe(MQTT_TOPIC_RELAY2)
     else:
         print(f"Failed to connect, return code {rc}")
 
@@ -77,6 +81,14 @@ def on_message(client, userdata, msg):
             if len(data) == 2:
                 sensor_data["temperature2"] = float(data[0])
                 sensor_data["humidity2"] = float(data[1])
+        if msg.topic == "Relay_1_ON":
+            client.publish(MQTT_TOPIC_RELAY1, "ON")
+        if msg.topic == "Relay_2_ON":
+            client.publish(MQTT_TOPIC_RELAY2, "ON")
+        if msg.topic == "Relay_1_OFF":
+            client.publish(MQTT_TOPIC_RELAY1, "OFF")
+        if msg.topic == "Relay_2_OFF":
+            client.publish(MQTT_TOPIC_RELAY2, "OFF")
 
         print("Sensor data updated:", sensor_data)  # Debug output
 
@@ -133,6 +145,7 @@ async def websocket_handler(websocket, path="/"):
                 response = json.dumps(sensor_data)
                 await websocket.send(response)
                 print(f"Sent sensor data to client: {response}")
+
     except websockets.exceptions.ConnectionClosed:
         print(f"Client disconnected: {websocket.remote_address}")
     finally:
