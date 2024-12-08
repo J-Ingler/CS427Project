@@ -119,20 +119,20 @@ def run_mqtt_client():
         client.disconnect()
 
 
-# WebSocket Server
+
 async def websocket_handler(websocket, path="/"):
-    # Register client
+    global connected_clients  # Ensure you're modifying the global variable
     print("websocket_handler invoked")
     connected_clients.append(websocket)
+    print(f"Client connected: {websocket.remote_address}")
     try:
-        # Keep connection alive
-        async for _ in websocket:
-            pass
+        async for message in websocket:
+            print(f"Message from client: {message}")
     except websockets.exceptions.ConnectionClosed:
-        print("WebSocket client disconnected")
+        print(f"Client disconnected: {websocket.remote_address}")
     finally:
-        # Unregister client on disconnect
         connected_clients.remove(websocket)
+        print(f"Connected clients after removal: {len(connected_clients)}")
 
 async def start_websocket_server():
     print("Starting WebSocket server on port 8001...")
