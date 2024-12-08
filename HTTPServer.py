@@ -53,6 +53,7 @@ def save_to_database():
     except Exception as e:
         print("Error saving to database:", e)
 
+
 # MQTT Callbacks
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
@@ -81,18 +82,6 @@ def on_message(client, userdata, msg):
             if len(data) == 2:
                 sensor_data["temperature2"] = float(data[0])
                 sensor_data["humidity2"] = float(data[1])
-        if msg.topic == "Relay_1_ON":
-            client.publish(MQTT_TOPIC_RELAY1, "ON")
-            print(MQTT_TOPIC_RELAY1, ": ON")
-        if msg.topic == "Relay_2_ON":
-            client.publish(MQTT_TOPIC_RELAY2, "ON")
-            print(MQTT_TOPIC_RELAY2, ": ON")
-        if msg.topic == "Relay_1_OFF":
-            client.publish(MQTT_TOPIC_RELAY1, "OFF")
-            print(MQTT_TOPIC_RELAY1, ": OFF")
-        if msg.topic == "Relay_2_OFF":
-            client.publish(MQTT_TOPIC_RELAY2, "OFF")
-            print(MQTT_TOPIC_RELAY2, ": OFF")
 
         print("Sensor data updated:", sensor_data)  # Debug output
 
@@ -117,6 +106,14 @@ async def broadcast_data():
 
 # MQTT Client in a separate thread
 
+def publish_relay_data(relay_data):
+    try:
+        client = mqtt.Client(client_id=MQTT_CLIENT_ID, protocol=mqtt.MQTTv311)
+        client.connect(MQTT_BROKER, port=MQTT_PORT)
+        client.publish("relay/data", relay_data)
+        print(f"Relay data published: {relay_data}")
+    except Exception as e:
+        print("Error publishing relay data:", e)
 
 def run_mqtt_client():
     # Create and set an event loop for this thread
@@ -144,7 +141,10 @@ async def websocket_handler(websocket, path="/"):
     try:
         async for message in websocket:
             print(f"Message from client: {message}")
-            if message == "GET_SENSOR_DATA":
+            if "relay" in message:
+                print(f"Relay data received: {message}")
+                publish_relay_data(message)
+            elif message == "GET_SENSOR_DATA":
                 # Respond with the current sensor data
                 response = json.dumps(sensor_data)
                 await websocket.send(response)
