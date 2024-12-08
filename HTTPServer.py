@@ -23,17 +23,14 @@ DB_CONFIG = {
     'database': 'iot'
 }
 
-# Global queue for sensor data
-sensor_data_queue = asyncio.Queue()
+# Global variable for sensor data
+sensor_data = {"temperature1": None, "humidity1": None, "temperature2": None, "humidity2": None}
 
 # List to store connected WebSocket clients
 connected_clients = []
 
-# Global event loop
-main_loop = None
-
 # Save data to database
-def save_to_database(sensor_data):
+def save_to_database():
     try:
         conn = mysql.connector.connect(**DB_CONFIG)
         cursor = conn.cursor()
@@ -41,10 +38,10 @@ def save_to_database(sensor_data):
                    VALUES (%s, %s, %s, %s, %s)"""
         timestamp = datetime.now()
         cursor.execute(query, (
-            sensor_data.get("temperature1"),
-            sensor_data.get("humidity1"),
-            sensor_data.get("temperature2"),
-            sensor_data.get("humidity2"),
+            sensor_data["temperature1"],
+            sensor_data["humidity1"],
+            sensor_data["temperature2"],
+            sensor_data["humidity2"],
             timestamp
         ))
         conn.commit()
@@ -53,25 +50,6 @@ def save_to_database(sensor_data):
         print("Sensor data saved to database.")
     except Exception as e:
         print("Error saving to database:", e)
-
-# Fetch the most recent data from the database
-def fetch_latest_data():
-    try:
-        conn = mysql.connector.connect(**DB_CONFIG)
-        cursor = conn.cursor(dictionary=True)
-        query = "SELECT * FROM sensor_data ORDER BY timestamp DESC LIMIT 1"
-        cursor.execute(query)
-        latest_data = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        if latest_data:
-            # Convert datetime object to string
-            if isinstance(latest_data['timestamp'], datetime):
-                latest_data['timestamp'] = latest_data['timestamp'].strftime("%Y-%m-%d %H:%M:%S")
-        return latest_data
-    except Exception as e:
-        print("Error fetching latest data:", e)
-        return None
 
 # MQTT Callbacks
 def on_connect(client, userdata, flags, rc):
@@ -83,125 +61,41 @@ def on_connect(client, userdata, flags, rc):
         print(f"Failed to connect, return code {rc}")
 
 def on_message(client, userdata, msg):
-    global main_loop
+    global sensor_data
     try:
         message = msg.payload.decode("utf-8")
-        sensor_data = {}
-
         if msg.topic == MQTT_TOPIC_SENSOR1:
             data = message.split(",")
             if len(data) == 2:
-                try:
-                    sensor_data["temperature1"] = float(data[0])
-                    sensor_data["humidity1"] = float(data[1])
-                except ValueError:
-                    print("Invalid sensor data received for SENSOR1:", data)
-                    return
+                sensor_data["temperature1"] = float(data[0])
+                sensor_data["humidity1"] = float(data[1])
         elif msg.topic == MQTT_TOPIC_SENSOR2:
             data = message.split(",")
             if len(data) == 2:
-                try:
-                    sensor_data["temperature2"] = float(data[0])
-                    sensor_data["humidity2"] = float(data[1])
-                except ValueError:
-                    print("Invalid sensor data received for SENSOR2:", data)
-                    return
+                sensor_data["temperature2"] = float(data[0])
+                sensor_data["humidity2"] = float(data[1])
 
-        print("Sensor data updated:", sensor_data)
+        print("Sensor data updated:", sensor_data)  # Debug output
 
-        # Save to database
-        save_to_database(sensor_data)
+        # Save to database after update
+        save_to_database()
 
-        # Enqueue data for WebSocket broadcast using the main loop
-        asyncio.run_coroutine_threadsafe(
-            sensor_data_queue.put(sensor_data),
-            main_loop  # Use the global main_loop
-        )
+        # Broadcast updated data to all WebSocket clients
+        loop = asyncio.get_running_loop()
+        print("Preparing to broadcast data to clients")  # Debug output
+        loop.call_soon_threadsafe(asyncio.create_task, broadcast_data())
 
     except Exception as e:
         print("Error processing MQTT message:", e)
 
-# WebSocket Server
-async def websocket_handler(websocket, path="/"):
-    connected_clients.append(websocket)
-    print(f"New WebSocket client connected. Total clients: {len(connected_clients)}")
-    try:
-        while True:
-            # Fetch the most recent data
-            latest_data = fetch_latest_data()
-            if latest_data:
-                await websocket.send(json.dumps(latest_data))
-            else:
-                await websocket.send(json.dumps({"error": "Could not fetch data"}))
-            await asyncio.sleep(5)  # Send updates every 5 seconds
-    except websockets.exceptions.ConnectionClosedError as e:
-        print(f"WebSocket error: {e}")
-    finally:
-        connected_clients.remove(websocket)
-        print(f"Client disconnected. Total clients: {len(connected_clients)}")
-
 async def broadcast_data():
-    while True:
-        sensor_data = await sensor_data_queue.get()
+    print(f"Connected clients: {len(connected_clients)}")  # Debug output
+    if connected_clients:  # Only send data if clients are connected
         message = json.dumps(sensor_data)
-        print("Broadcasting data to clients:", message)
-        for client in connected_clients[:]:
-            try:
-                await client.send(message)
-            except websockets.exceptions.ConnectionClosed:
-                print("Client disconnected during broadcast.")
-                connected_clients.remove(client)
+        print("Broadcasting data to clients:", message)  # Debug output
+        await asyncio.gather(*(client.send(message) for client in connected_clients if client.open))
 
-async def start_websocket_server():
-    global main_loop
-    main_loop = asyncio.get_event_loop()  # Set the global main_loop
-    print("Starting WebSocket server on port 8001...")
-    try:
-        async with websockets.serve(websocket_handler, "0.0.0.0", 8001):
-            await asyncio.Future()  # Keep the server running indefinitely
-    except asyncio.CancelledError:
-        print("WebSocket server shutting down.")
-
-# HTTP Server
-class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
-    def do_GET(self):
-        if self.path == "/data":
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(bytes(json.dumps({"message": "Data endpoint not implemented here"}), "utf-8"))
-        elif self.path == "/" or self.path == "/index.html":
-            self.path = "/sensors.html"
-            super().do_GET()
-        else:
-            super().do_GET()
-
-# Start HTTP Server
-def start_http_server():
-    with socketserver.TCPServer(("0.0.0.0", 8000), MyRequestHandler) as httpd:
-        print("Serving HTTP on port 8000")
-        httpd.serve_forever()
-
-# Start Servers
-def start_servers():
-    global main_loop
-
-    # Start HTTP server in a separate thread
-    http_thread = threading.Thread(target=start_http_server)
-    http_thread.daemon = True
-    http_thread.start()
-
-    # Start MQTT client in a separate thread
-    mqtt_thread = threading.Thread(target=run_mqtt_client)
-    mqtt_thread.daemon = True
-    mqtt_thread.start()
-
-    # Run WebSocket server in the asyncio event loop
-    try:
-        asyncio.run(start_websocket_server())  # Start the WebSocket server and set up the event loop
-    except KeyboardInterrupt:
-        print("Servers shutting down.")
-
+# MQTT Client in a separate thread
 def run_mqtt_client():
     client = mqtt.Client(client_id=MQTT_CLIENT_ID, protocol=mqtt.MQTTv311)
     client.on_connect = on_connect
@@ -213,6 +107,62 @@ def run_mqtt_client():
     except Exception as e:
         print("MQTT client error:", e)
         client.disconnect()
+
+# WebSocket Server
+async def websocket_handler(websocket, path="/"):
+    # Register client
+    connected_clients.append(websocket)
+    try:
+        # Keep connection alive
+        async for _ in websocket:
+            pass
+    except websockets.exceptions.ConnectionClosed:
+        print("WebSocket client disconnected")
+    finally:
+        # Unregister client on disconnect
+        connected_clients.remove(websocket)
+
+async def start_websocket_server():
+    print("Starting WebSocket server on port 8001...")
+    async with websockets.serve(websocket_handler, "0.0.0.0", 8001):  # Bind to all interfaces
+        await asyncio.Future()  # Keep the server running indefinitely
+
+# HTTP Server
+class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == "/data":
+            # Serve sensor data as JSON
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(bytes(json.dumps(sensor_data), "utf-8"))
+        elif self.path == "/" or self.path == "/index.html":
+            # Default to serving sensors.html
+            self.path = "/sensors.html"
+            super().do_GET()
+        else:
+            super().do_GET()
+
+# Start HTTP Server
+def start_http_server():
+    with socketserver.TCPServer(("0.0.0.0", 8000), MyRequestHandler) as httpd:  # Bind to all interfaces
+        print("Serving HTTP on port 8000")
+        httpd.serve_forever()
+
+# Start Servers
+def start_servers():
+    # Start HTTP server in a separate thread
+    http_thread = threading.Thread(target=start_http_server)
+    http_thread.daemon = True
+    http_thread.start()
+
+    # Start MQTT client in a separate thread
+    mqtt_thread = threading.Thread(target=run_mqtt_client)
+    mqtt_thread.daemon = True
+    mqtt_thread.start()
+
+    # Run WebSocket server in the asyncio event loop
+    asyncio.run(start_websocket_server())
 
 if __name__ == "__main__":
     start_servers()
