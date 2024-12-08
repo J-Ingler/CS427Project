@@ -63,6 +63,7 @@ def on_connect(client, userdata, flags, rc):
 from asyncio import run_coroutine_threadsafe
 
 def on_message(client, userdata, msg):
+    print("On message invoked")
     global sensor_data
     try:
         message = msg.payload.decode("utf-8")
@@ -91,6 +92,7 @@ def on_message(client, userdata, msg):
 
 
 async def broadcast_data():
+    print("broadcasting data...")
     print(f"Connected clients: {len(connected_clients)}")  # Debug output
     #if connected_clients:  # Only send data if clients are connected
     message = json.dumps(sensor_data)
@@ -120,6 +122,7 @@ def run_mqtt_client():
 # WebSocket Server
 async def websocket_handler(websocket, path="/"):
     # Register client
+    print("websocket_handler invoked")
     connected_clients.append(websocket)
     try:
         # Keep connection alive
