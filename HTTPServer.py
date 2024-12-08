@@ -142,14 +142,27 @@ async def websocket_handler(websocket, path="/"):
     try:
         async for message in websocket:
             print(f"Message from client: {message}")
-            if "relay" in message:
-                print(f"Relay data received: {message}")
-                publish_relay_data(message)
+            if message.startswith("Relay"):
+                # Parse relay command (e.g., "Relay_1_ON" or "Relay_1_OFF")
+                print(f"Relay command received: {message}")
+                publish_relay_data(message)  # Publish to MQTT broker
+
+                # Optionally send confirmation back to client
+                response = {"status": "success", "message": f"Processed relay command: {message}"}
+                await websocket.send(json.dumps(response))
+                print(f"Relay confirmation sent to client: {response}")
+
             elif message == "GET_SENSOR_DATA":
                 # Respond with the current sensor data
                 response = json.dumps(sensor_data)
                 await websocket.send(response)
                 print(f"Sent sensor data to client: {response}")
+
+            else:
+                # Handle other commands or messages
+                print(f"Unknown message received: {message}")
+                response = {"status": "error", "message": "Unknown command"}
+                await websocket.send(json.dumps(response))
 
     except websockets.exceptions.ConnectionClosed:
         print(f"Client disconnected: {websocket.remote_address}")
