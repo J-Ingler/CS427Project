@@ -60,6 +60,8 @@ def on_connect(client, userdata, flags, rc):
     else:
         print(f"Failed to connect, return code {rc}")
 
+from asyncio import run_coroutine_threadsafe
+
 def on_message(client, userdata, msg):
     global sensor_data
     try:
@@ -81,12 +83,12 @@ def on_message(client, userdata, msg):
         save_to_database()
 
         # Broadcast updated data to all WebSocket clients
-        loop = asyncio.get_running_loop()
-        print("Preparing to broadcast data to clients")  # Debug output
-        loop.call_soon_threadsafe(asyncio.create_task, broadcast_data())
+        loop = asyncio.get_event_loop()
+        run_coroutine_threadsafe(broadcast_data(), loop)
 
     except Exception as e:
         print("Error processing MQTT message:", e)
+
 
 async def broadcast_data():
     print(f"Connected clients: {len(connected_clients)}")  # Debug output
