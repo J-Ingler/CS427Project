@@ -49,14 +49,15 @@
       };
 
       webSocket.onmessage = (event) => {
-        if (event.data.substring(8, 10) === "ON") {
-        state.innerHTML = "state:" + event.data;
-        document.getElementById("relay" + event.data.substring(6, 7)).style.backgroundColor = "rgb(250, 17, 17)";
-      } else if (event.data.substring(8, 11) === "OFF") {
-        state.innerHTML = "state:" + event.data;
-        document.getElementById("relay" + event.data.substring(6, 7)).style.backgroundColor = "rgb(48, 230, 60)";
-      }
         try {
+          if (event.data.substring(8, 10) === "ON") {
+            state.innerHTML = "state:" + event.data;
+            document.getElementById("relay" + event.data.substring(6, 7)).style.backgroundColor = "rgb(250, 17, 17)";
+          } else if (event.data.substring(8, 11) === "OFF") {
+            state.innerHTML = "state:" + event.data;
+            document.getElementById("relay" + event.data.substring(6, 7)).style.backgroundColor = "rgb(48, 230, 60)";
+          }
+
           const data = JSON.parse(event.data);
           document.getElementById("temperature1").textContent = data.temperature1 || "N/A";
           document.getElementById("humidity1").textContent = data.humidity1 || "N/A";
@@ -83,12 +84,14 @@
       const relayButton = document.getElementById(`relay${number}`);
       const bgColor = window.getComputedStyle(relayButton).backgroundColor;
 
-      if (bgColor === "rgb(250, 17, 17)") { // Red
-        console.log(`Relay ${number} OFF`);
-        webSocket.send(`Relay_${number}_OFF`);
-      } else if (bgColor === "rgb(48, 230, 60)") { // Green
+      if (bgColor === "rgb(250, 17, 17)") { // Red (OFF)
         console.log(`Relay ${number} ON`);
         webSocket.send(`Relay_${number}_ON`);
+        relayButton.style.backgroundColor = "rgb(48, 230, 60)"; // Change to Green
+      } else if (bgColor === "rgb(48, 230, 60)") { // Green (ON)
+        console.log(`Relay ${number} OFF`);
+        webSocket.send(`Relay_${number}_OFF`);
+        relayButton.style.backgroundColor = "rgb(250, 17, 17)"; // Change to Red
       }
     }
 
