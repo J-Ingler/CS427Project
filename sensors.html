@@ -38,6 +38,7 @@
   </div>
   <script>
     let webSocket = null;
+    let lastSensorData = { temperature1: "N/A", humidity1: "N/A", temperature2: "N/A", humidity2: "N/A" };
 
     function initWebSocket() {
       const wsUri = `ws://${window.location.hostname}:8001`;
@@ -61,10 +62,16 @@
           // Update sensor data only if it's a sensor update
           if (event.data.includes("temperature1") || event.data.includes("humidity1")) {
             const data = JSON.parse(event.data);
-            document.getElementById("temperature1").textContent = data.temperature1 || "N/A";
-            document.getElementById("humidity1").textContent = data.humidity1 || "N/A";
-            document.getElementById("temperature2").textContent = data.temperature2 || "N/A";
-            document.getElementById("humidity2").textContent = data.humidity2 || "N/A";
+            lastSensorData = {
+              temperature1: data.temperature1 || lastSensorData.temperature1,
+              humidity1: data.humidity1 || lastSensorData.humidity1,
+              temperature2: data.temperature2 || lastSensorData.temperature2,
+              humidity2: data.humidity2 || lastSensorData.humidity2,
+            };
+            document.getElementById("temperature1").textContent = lastSensorData.temperature1;
+            document.getElementById("humidity1").textContent = lastSensorData.humidity1;
+            document.getElementById("temperature2").textContent = lastSensorData.temperature2;
+            document.getElementById("humidity2").textContent = lastSensorData.humidity2;
           }
         } catch (error) {
           console.error("Error parsing WebSocket data:", error);
