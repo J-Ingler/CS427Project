@@ -111,7 +111,7 @@
         if (webSocket && webSocket.readyState === WebSocket.OPEN) {
           webSocket.send("GET_SENSOR_DATA"); // Adjust command if needed for your server
         }
-      }, 5000); // Refresh every 5 seconds
+      }, 1000); // Refresh every 5 seconds
     });
   </script>
 </body>
