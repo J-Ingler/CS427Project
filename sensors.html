@@ -58,11 +58,14 @@
             document.getElementById("relay" + event.data.substring(6, 7)).style.backgroundColor = "rgb(48, 230, 60)";
           }
 
-          const data = JSON.parse(event.data);
-          document.getElementById("temperature1").textContent = data.temperature1 || "N/A";
-          document.getElementById("humidity1").textContent = data.humidity1 || "N/A";
-          document.getElementById("temperature2").textContent = data.temperature2 || "N/A";
-          document.getElementById("humidity2").textContent = data.humidity2 || "N/A";
+          // Update sensor data only if it's a sensor update
+          if (event.data.includes("temperature1") || event.data.includes("humidity1")) {
+            const data = JSON.parse(event.data);
+            document.getElementById("temperature1").textContent = data.temperature1 || "N/A";
+            document.getElementById("humidity1").textContent = data.humidity1 || "N/A";
+            document.getElementById("temperature2").textContent = data.temperature2 || "N/A";
+            document.getElementById("humidity2").textContent = data.humidity2 || "N/A";
+          }
         } catch (error) {
           console.error("Error parsing WebSocket data:", error);
         }
